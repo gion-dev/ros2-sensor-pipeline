@@ -1,0 +1,15 @@
+<package format="3">
+  <name>sensor_pipeline_launch</name>
+  <version>0.0.0</version>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <exec_depend>sensor_pipeline_cpp</exec_depend>
+  <exec_depend>sensor_pipeline_py</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
