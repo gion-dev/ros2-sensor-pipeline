@@ -8,13 +8,13 @@ def generate_launch_description():
         Node(
             package='sensor_pipeline_cpp',
             executable='sensor_node',
-            output='screen'
+            parameters=[{'noise': 0.3}]
         ),
 
         Node(
             package='sensor_pipeline_cpp',
             executable='filter_node',
-            output='screen'
+            parameters=[{'alpha': 0.2}]
         ),
 
         Node(

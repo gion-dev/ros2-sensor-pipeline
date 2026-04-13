@@ -3,10 +3,10 @@
 
 class FilterNode : public rclcpp::Node {
 public:
-    FilterNode() : Node("filter_node"), prev_filtered_(0.0) {
+    FilterNode() : Node("filter_node"), prev_filtered_(0.0), is_first_(true) {
 
         this->declare_parameter("alpha", 0.1);
-        alpha_ = this->get_parameter("alpha").as_double();
+        this->get_parameter("alpha", alpha_);
 
         sub_ = this->create_subscription<std_msgs::msg::Float64>(
             "/sensor/raw", 10,
@@ -20,9 +20,16 @@ public:
 private:
     void callback(const std_msgs::msg::Float64::SharedPtr msg) {
         double raw = msg->data;
+        double filtered;
 
-        double filtered = alpha_ * raw + (1 - alpha_) * prev_filtered_;
-        prev_filtered_ = filtered;
+        if (is_first_) {
+            filtered = raw;
+            prev_filtered_ = raw;
+            is_first_ = false;
+        } else {
+            filtered = alpha_ * raw + (1 - alpha_) * prev_filtered_;
+            prev_filtered_ = filtered;
+        }
 
         std_msgs::msg::Float64 out_msg;
         out_msg.data = filtered;
@@ -31,6 +38,7 @@ private:
 
     double alpha_;
     double prev_filtered_;
+    bool is_first_;
 
     rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr sub_;
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pub_;
