@@ -31,3 +31,9 @@ __pycache__/
 # =========================
 .DS_Store
 Thumbs.db
+
+# =========================
+# Experiment data
+# =========================
+data/*.csv
+!data/experiment_results.csv

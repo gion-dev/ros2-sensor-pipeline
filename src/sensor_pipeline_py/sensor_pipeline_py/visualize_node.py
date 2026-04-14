@@ -24,9 +24,13 @@ class VisualizeNode(Node):
         self.base_path = os.path.expanduser("~/work/ros2-sensor-pipeline/data")
         os.makedirs(self.base_path, exist_ok=True)
 
-        self.tmp_path = os.path.join(self.base_path, "result_tmp.png")
-        self.final_path = os.path.join(self.base_path, "result.png")
-        self.csv_path = os.path.join(self.base_path, "sample.csv")
+        self.declare_parameter("tau", 0.5)
+        self.tau = self.get_parameter("tau").get_parameter_value().double_value
+
+        # ファイル名にtauを反映
+        self.tmp_path = os.path.join(self.base_path, f"result_tmp_tau_{self.tau}.png")
+        self.final_path = os.path.join(self.base_path, f"result_tau_{self.tau}.png")
+        self.csv_path = os.path.join(self.base_path, f"sample_tau_{self.tau}.csv")
 
         # ===== 起動時にtmp削除 =====
         if os.path.exists(self.tmp_path):
@@ -62,7 +66,7 @@ class VisualizeNode(Node):
             self.filtered_data.pop(0)
 
         if len(self.raw_data) == len(self.filtered_data):
-            if not self.is_saving:
+            if not self.is_saving and len(self.raw_data) % 20 == 0:
                 self.save_all()
 
     def save_all(self):
