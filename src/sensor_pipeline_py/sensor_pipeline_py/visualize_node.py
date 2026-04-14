@@ -95,8 +95,9 @@ class VisualizeNode(Node):
                 for i in range(len(self.filtered_data)):
                     raw = self.raw_data[i] if i < len(self.raw_data) else ''
                     writer.writerow([self.time_data[i], raw, self.filtered_data[i]])
-
-            self.get_logger().info('Saved plot & csv')
+            
+            # saveログ（多すぎるので一旦コメントアウト）
+            # self.get_logger().info('Saved plot & csv')
 
         except Exception as e:
             self.get_logger().error(f'Plot error: {e}')
