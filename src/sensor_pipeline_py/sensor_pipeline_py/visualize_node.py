@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float64
@@ -7,14 +6,35 @@ import matplotlib
 matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
-import os
 import csv
+import os
+import math
 
-MAX_POINTS = 500  # 表示する最大データ数
+MAX_POINTS = 200
 
 class VisualizeNode(Node):
     def __init__(self):
         super().__init__('visualize_node')
+
+        self.raw_data = []
+        self.filtered_data = []
+        self.is_saving = False
+
+        # ===== パス設定 =====
+        self.base_path = os.path.expanduser("~/work/ros2-sensor-pipeline/data")
+        os.makedirs(self.base_path, exist_ok=True)
+
+        self.tmp_path = os.path.join(self.base_path, "result_tmp.png")
+        self.final_path = os.path.join(self.base_path, "result.png")
+        self.csv_path = os.path.join(self.base_path, "sample.csv")
+
+        # ===== 起動時にtmp削除 =====
+        if os.path.exists(self.tmp_path):
+            try:
+                os.remove(self.tmp_path)
+                self.get_logger().info("Removed leftover tmp file")
+            except Exception as e:
+                self.get_logger().warn(f"Failed to remove tmp file: {e}")
 
         # ===== Subscriber =====
         self.sub_raw = self.create_subscription(
@@ -31,76 +51,75 @@ class VisualizeNode(Node):
             10
         )
 
-        # ===== データ保持 =====
-        self.raw_data = []
-        self.filtered_data = []
-        self.time_data = []
-        self.t = 0
-
-        # ===== 出力先 =====
-        self.output_dir = os.path.expanduser('~/work/ros2-sensor-pipeline/data')
-        os.makedirs(self.output_dir, exist_ok=True)
-
-        self.png_path = os.path.join(self.output_dir, 'result.png')
-        self.csv_path = os.path.join(self.output_dir, 'sample.csv')
-
-        self.get_logger().info(f'Output dir: {self.output_dir}')
-
     def callback_raw(self, msg):
         self.raw_data.append(msg.data)
+        if len(self.raw_data) > MAX_POINTS:
+            self.raw_data.pop(0)
 
     def callback_filtered(self, msg):
         self.filtered_data.append(msg.data)
-
-        # 時間更新
-        self.t += 1
-        self.time_data.append(self.t)
-
-        # データ長制限
-        if len(self.raw_data) > MAX_POINTS:
-            self.raw_data.pop(0)
         if len(self.filtered_data) > MAX_POINTS:
             self.filtered_data.pop(0)
-            self.time_data.pop(0)
 
-        # 描画
-        self.save_plot()
+        if len(self.raw_data) == len(self.filtered_data):
+            if not self.is_saving:
+                self.save_all()
 
-    def save_plot(self):
+    def save_all(self):
+        self.is_saving = True
+
         try:
-            plt.clf()
+            # ===== データ準備 =====
+            x = list(range(len(self.raw_data)))
+            error = [r - f for r, f in zip(self.raw_data, self.filtered_data)]
 
-            # raw（薄い線）
-            plt.plot(self.time_data, self.raw_data,
-                     label='raw',
-                     alpha=0.7)
+            mse = sum(e**2 for e in error) / len(error)
+            rmse = math.sqrt(mse)
 
-            # filtered（強調）
-            plt.plot(self.time_data, self.filtered_data,
-                     label='filtered',
-                     linewidth=2)
-
-            plt.legend()
-            plt.xlabel('time')
-            plt.ylabel('value')
-            plt.title('Sensor Data (Raw vs Filtered)')
-
-            plt.savefig(self.png_path)
-
-            # CSV保存
-            with open(self.csv_path, 'w', newline='') as f:
+            # ===== CSV保存 =====
+            with open(self.csv_path, "w", newline="") as f:
                 writer = csv.writer(f)
-                writer.writerow(['time', 'raw', 'filtered'])
+                writer.writerow(["step", "raw", "filtered", "error"])
+                for i in range(len(x)):
+                    writer.writerow([i, self.raw_data[i], self.filtered_data[i], error[i]])
 
-                for i in range(len(self.filtered_data)):
-                    raw = self.raw_data[i] if i < len(self.raw_data) else ''
-                    writer.writerow([self.time_data[i], raw, self.filtered_data[i]])
-            
-            # saveログ（多すぎるので一旦コメントアウト）
-            # self.get_logger().info('Saved plot & csv')
+            # ===== グラフ描画 =====
+            plt.figure(figsize=(10, 6))
 
-        except Exception as e:
-            self.get_logger().error(f'Plot error: {e}')
+            # 上の線
+            plt.subplot(2, 1, 1)
+            plt.plot(x, self.raw_data, alpha=0.9, label="raw")
+            plt.plot(x, self.filtered_data, label="filtered", linewidth=2)
+            plt.title(f"Sensor Data (RMSE={rmse:.3f})")
+            plt.legend()
+            plt.grid()
+
+            # 下の線
+            plt.subplot(2, 1, 2)
+            plt.plot(x, error, color="red",  alpha=0.7, label="error")
+            plt.legend()
+            plt.grid()
+
+            plt.tight_layout()
+
+            # ===== tmpに保存 =====
+            plt.savefig(self.tmp_path)
+            plt.close()
+
+            # ===== 完了後に置き換え =====
+            os.replace(self.tmp_path, self.final_path)
+
+            self.get_logger().info(f"Saved plot & csv (RMSE={rmse:.3f})")
+
+        finally:
+            self.is_saving = False
+
+            # ===== finallyでもtmp削除 =====
+            if os.path.exists(self.tmp_path):
+                try:
+                    os.remove(self.tmp_path)
+                except:
+                    pass
 
 def main():
     rclpy.init()
@@ -109,7 +128,8 @@ def main():
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
-        node.get_logger().info('Shutting down safely...')
+        node.get_logger().info("Shutting down safely...")
     finally:
+        node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()
