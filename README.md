@@ -1,8 +1,7 @@
 # ROS2 Sensor Pipeline
 
-ROS2を用いてセンサーデータの生成・フィルタリング・可視化・評価までを一貫して行うパイプラインを構築しました。
+ROS2を用いてセンサーデータの生成・フィルタリング・可視化・評価までを行うパイプラインを構築しました。
 
----
 
 ## ■ 概要
 
@@ -130,5 +129,12 @@ data/rmse_vs_tau.png
 - ROS2 Humble  
 - C++（rclcpp）  
 - Python（rclpy, matplotlib）  
-- colcon  
+- colcon
 
+---
+
+## ■ 環境  
+- OS: Ubuntu 22.04
+- ROS2: Humble
+- Python: 3.10.12
+- Compiler: g++ 11.4.0
