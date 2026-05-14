@@ -49,6 +49,43 @@ CSV & グラフ出力
 
 ---
 
+## ■ 実行方法
+
+### 初回セットアップ
+ROS2 workspace の `src` 配下に、本リポジトリ内 package へのシンボリックリンクを作成してください。
+```
+cd ~/work/ros2_ws/src
+
+ln -s ~/work/ros2-sensor-pipeline/src/sensor_pipeline_cpp .
+ln -s ~/work/ros2-sensor-pipeline/src/sensor_pipeline_launch .
+ln -s ~/work/ros2-sensor-pipeline/src/sensor_pipeline_py .
+```
+
+### ROS2ビルド
+```
+cd ~/work/ros2_ws
+colcon build --symlink-install --merge-install
+source install/setup.bash
+```
+
+### 実験・評価・可視化（全自動）
+```
+cd ~/work/ros2-sensor-pipeline
+
+python3 run_all.py
+```
+RMSE評価・CSV保存・グラフ生成までを自動実行します。
+
+### 現在の制約事項
+現バージョンでは、CSV/画像出力パスを簡略化するため、  
+本リポジトリを以下のパスへ clone する前提となっています。
+```
+~/work/ros2-sensor-pipeline
+```
+今後は launch parameter 化および path 解決処理の改善を予定しています。
+
+---
+
 ## ■ フィルタ概要
 
 一次遅れフィルタ（Exponential Moving Average）  
@@ -74,19 +111,7 @@ TAUS = [0.03, 0.05, 0.08, 0.1, 0.15, 0.2, 0.3]
 - CSVへ保存  
 - グラフ生成  
 
-■ 実行方法  
-1. ROS2ビルド  
-```
-cd ~/work/ros2_ws  
-colcon build --symlink-install --merge-install  
-source install/setup.bash
-```
-2. 実験・評価・可視化（全自動）  
-```
-cd ~/work/ros2-sensor-pipeline  
-python3 run_all.py  
-```
-■ 出力結果  
+### ■ 出力結果  
 - 時系列グラフ  
 - raw（センサ値）  
 - filtered（フィルタ後）  
@@ -105,7 +130,7 @@ data/rmse_vs_tau.png
 ### 時系列グラフ（tau 0.1の例）
 ![tau0.1](data/result_tau_0.1.png)
 
-■ 結果と考察  
+### ■ 結果と考察  
 小さいtau  
 → 応答は速いがノイズが多い  
 大きいtau  
@@ -116,7 +141,7 @@ data/rmse_vs_tau.png
 ![small](data/result_tau_0.03.png)
 ![large](data/result_tau_0.3.png)
 
-■ 工夫した点  
+### ■ 工夫した点  
 - パラメータスイープの自動化（sweep_tau.py）  
 - 実験〜可視化の完全自動化（run_all.py）  
 - RMSEによる定量評価  
@@ -125,7 +150,7 @@ data/rmse_vs_tau.png
 - 乱数seed固定による再現性確保  
 - 初期不安定データの除外（warmup） 
 
-■ 技術スタック  
+### ■ 技術スタック  
 - ROS2 Humble  
 - C++（rclcpp）  
 - Python（rclpy, matplotlib）  
