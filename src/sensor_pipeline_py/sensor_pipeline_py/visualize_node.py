@@ -16,14 +16,16 @@ class VisualizeNode(Node):
     def __init__(self):
         super().__init__('visualize_node')
 
+        # センサーデータ保持用
         self.raw_data = []
         self.filtered_data = []
         self.is_saving = False
 
-        # ===== パス設定 =====
+        # パス設定
         self.base_path = os.path.expanduser("~/work/ros2-sensor-pipeline/data")
         os.makedirs(self.base_path, exist_ok=True)
 
+        # EMAフィルタの時定数を取得
         self.declare_parameter("tau", 0.5)
         self.tau = self.get_parameter("tau").get_parameter_value().double_value
 
@@ -32,7 +34,7 @@ class VisualizeNode(Node):
         self.final_path = os.path.join(self.base_path, f"result_tau_{self.tau}.png")
         self.csv_path = os.path.join(self.base_path, f"sample_tau_{self.tau}.csv")
 
-        # ===== 起動時にtmp削除 =====
+        # 起動時にtmp削除
         if os.path.exists(self.tmp_path):
             try:
                 os.remove(self.tmp_path)
@@ -40,7 +42,7 @@ class VisualizeNode(Node):
             except Exception as e:
                 self.get_logger().warn(f"Failed to remove tmp file: {e}")
 
-        # ===== Subscriber =====
+        # Subscriber
         self.sub_raw = self.create_subscription(
             Float64,
             '/sensor/raw',
@@ -48,6 +50,7 @@ class VisualizeNode(Node):
             10
         )
 
+        # フィルタリング後のデータをサブスクライブ
         self.sub_filtered = self.create_subscription(
             Float64,
             '/sensor/filtered',
@@ -55,16 +58,19 @@ class VisualizeNode(Node):
             10
         )
 
+    # 生データを保存
     def callback_raw(self, msg):
         self.raw_data.append(msg.data)
         if len(self.raw_data) > MAX_POINTS:
             self.raw_data.pop(0)
 
+    # フィルタリング後のデータを保存
     def callback_filtered(self, msg):
         self.filtered_data.append(msg.data)
         if len(self.filtered_data) > MAX_POINTS:
             self.filtered_data.pop(0)
 
+        # 生データとフィルタデータが揃った場合のみ保存処理を実行
         if len(self.raw_data) == len(self.filtered_data):
             if not self.is_saving and len(self.raw_data) % 20 == 0:
                 self.save_all()
@@ -73,24 +79,26 @@ class VisualizeNode(Node):
         self.is_saving = True
 
         try:
-            # ===== データ準備 =====
+            # データ準備
             x = list(range(len(self.raw_data)))
+            
+            # ここでのerrorは誤差算出として使用
             error = [r - f for r, f in zip(self.raw_data, self.filtered_data)]
 
             mse = sum(e**2 for e in error) / len(error)
             rmse = math.sqrt(mse)
 
-            # ===== CSV保存 =====
+            # CSV保存
             with open(self.csv_path, "w", newline="") as f:
                 writer = csv.writer(f)
                 writer.writerow(["step", "raw", "filtered", "error"])
                 for i in range(len(x)):
                     writer.writerow([i, self.raw_data[i], self.filtered_data[i], error[i]])
 
-            # ===== グラフ描画 =====
+            # グラフ描画
             plt.figure(figsize=(10, 6))
 
-            # 上の線
+            # 生データとフィルタリング後のデータを描画
             plt.subplot(2, 1, 1)
             plt.plot(x, self.raw_data, alpha=0.9, label="raw")
             plt.plot(x, self.filtered_data, label="filtered", linewidth=2)
@@ -98,7 +106,7 @@ class VisualizeNode(Node):
             plt.legend()
             plt.grid()
 
-            # 下の線
+            # フィルタリングによる誤差を描画
             plt.subplot(2, 1, 2)
             plt.plot(x, error, color="red",  alpha=0.7, label="error")
             plt.legend()
@@ -106,11 +114,11 @@ class VisualizeNode(Node):
 
             plt.tight_layout()
 
-            # ===== tmpに保存 =====
+            # tmpに保存
             plt.savefig(self.tmp_path)
             plt.close()
 
-            # ===== 完了後に置き換え =====
+            # 完了後に置き換え
             os.replace(self.tmp_path, self.final_path)
 
             self.get_logger().info(f"Saved plot & csv (RMSE={rmse:.3f})")
@@ -118,7 +126,7 @@ class VisualizeNode(Node):
         finally:
             self.is_saving = False
 
-            # ===== finallyでもtmp削除 =====
+            # finallyでもtmp削除
             if os.path.exists(self.tmp_path):
                 try:
                     os.remove(self.tmp_path)
@@ -131,7 +139,7 @@ def main():
 
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
         node.get_logger().info("Shutting down safely...")
     finally:
         node.destroy_node()

@@ -1,12 +1,12 @@
 # ROS2 Sensor Pipeline
 
-ROS2を用いてセンサーデータの生成・フィルタリング・可視化・評価までを行うパイプラインを構築しました。
+ROS2を用いて疑似センサーデータ生成・フィルタリング・可視化・評価までを行うパイプラインを構築しました。
 
 
 ## ■ 概要
 
-ノイズを含むセンサーデータに対して一次遅れフィルタ（EMA）を適用し、  
-可視化およびRMSEによる定量評価を通して最適なパラメータ（tau）を検証します。
+ノイズを含む疑似センサーデータに対して一次遅れフィルタ（EMA）を適用し、  
+指定したパラメータ(tau)により、RMSEがどう変化するか比較します。
 
 ![RMSE](data/rmse_vs_tau.png)
 
@@ -17,7 +17,7 @@ ROS2を用いてセンサーデータの生成・フィルタリング・可視�
 ros2-sensor-pipeline/  
 ├ data/  
 │ ├ result_tau_*.png         # 各tauの時系列グラフ  
-│ ├ rmse_vs_tau.png          # RMSE vs tau グラフ  
+│ ├ rmse_vs_tau.png          # 各tauによるRMSEの推移グラフ 
 │ └ experiment_results.csv   # RMSE集計  
 │  
 ├ src/  
@@ -36,15 +36,15 @@ ros2-sensor-pipeline/
 ```
 SensorNode (C++)
 ↓
-生データ出力（/sensor/raw）
+↓ 乱数ベースの疑似生データを通知
 ↓
 FilterNode (C++)
 ↓
-フィルターデータ出力（/sensor/filtered）
+↓ EMAフィルタでフィルタリングしたデータを通知
 ↓
 VisualizeNode (Python)
 ↓
-CSV & グラフ出力
+CSV & グラフ出力 にて可視化
 ```
 
 ---
@@ -68,7 +68,7 @@ colcon build --symlink-install --merge-install
 source install/setup.bash
 ```
 
-### 実験・評価・可視化（全自動）
+### 実験・評価・可視化（自動化）
 ```
 cd ~/work/ros2-sensor-pipeline
 
@@ -76,13 +76,12 @@ python3 run_all.py
 ```
 RMSE評価・CSV保存・グラフ生成までを自動実行します。
 
-### 現在の制約事項
-現バージョンでは、CSV/画像出力パスを簡略化するため、  
+### 制約事項
+CSV/画像出力パスを簡略化するため、  
 本リポジトリを以下のパスへ clone する前提となっています。
 ```
 ~/work/ros2-sensor-pipeline
 ```
-今後は launch parameter 化および path 解決処理の改善を予定しています。
 
 ---
 
@@ -91,8 +90,9 @@ RMSE評価・CSV保存・グラフ生成までを自動実行します。
 一次遅れフィルタ（Exponential Moving Average）  
 filtered = alpha * raw + (1 - alpha) * prev_filtered
 
-- ノイズ低減と応答速度のトレードオフ
-- パラメータ（tau）により特性が変化
+- パラメータ(tau)によりalphaが変化する
+- tauが大きいほど、alphaが小さくなる
+- alphaが小さくなるほど、過去のfiltered値を強く残すのでフィルタリングが強くなる
 
 ---
 
@@ -115,39 +115,31 @@ TAUS = [0.03, 0.05, 0.08, 0.1, 0.15, 0.2, 0.3]
 - 時系列グラフ  
 - raw（センサ値）  
 - filtered（フィルタ後）  
-- error（raw - filtered）  
+- error（raw - filtered）  # 誤差算出
 
-例：  
-```
-data/result_tau_0.1.png  
-```
 評価グラフ  
 ```
 data/rmse_vs_tau.png  
 ```
-👉 tauごとのRMSEを比較可能  
+👉 tauごとのRMSEを比較します
+
+### ■ 結果と考察  
+- 小さいtau  
+→ 生のセンサーデータに近いまま通知する  
+- 大きいtau  
+→ より強いフィルターがかかる
 
 ### 時系列グラフ（tau 0.1の例）
 ![tau0.1](data/result_tau_0.1.png)
 
-### ■ 結果と考察  
-小さいtau  
-→ 応答は速いがノイズが多い  
-大きいtau  
-→ 滑らかだが遅延が大きい  
-👉 RMSEが最小となる最適tauが存在することを確認
-
-### 比較例
+### 比較例（tau 0.03と0.3の比較）
 ![small](data/result_tau_0.03.png)
 ![large](data/result_tau_0.3.png)
 
 ### ■ 工夫した点  
 - パラメータスイープの自動化（sweep_tau.py）  
 - 実験〜可視化の完全自動化（run_all.py）  
-- RMSEによる定量評価  
-- 誤差（raw - filtered）の可視化  
-- 途中終了でも壊れないファイル保存（atomic save）  
-- 乱数seed固定による再現性確保  
+- 途中終了でも壊れないファイル保存（atomic save）    
 - 初期不安定データの除外（warmup） 
 
 ### ■ 技術スタック  

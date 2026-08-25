@@ -32,7 +32,7 @@ public:
 
 private:
     void publish_data() {
-        // ===== dt計算（ここが改善ポイント）=====
+        // dt計算
         auto now = this->now();
         double dt = (now - prev_time_).seconds();
         prev_time_ = now;
@@ -42,18 +42,19 @@ private:
             dt = 0.1;
         }
 
-        // ===== 時間更新 =====
+        // 時間更新
         t_ += dt;
 
-        // ===== 信号生成 =====
+        // 信号生成
         double signal = std::sin(t_);
 
-        // ===== ノイズ生成 =====
+        // ノイズ生成
         double noise = dist_(gen_) * noise_stddev_;
 
-        // ===== 合成 =====
+        // 合成
         double data = signal + noise;
 
+        // フィルタリング結果をROSトピックへ送信
         std_msgs::msg::Float64 msg;
         msg.data = data;
         pub_->publish(msg);
@@ -63,13 +64,13 @@ private:
     rclcpp::Time prev_time_;
     double t_;
 
-    // ノイズ
+    // ノイズ用
     std::random_device rd_;
     std::mt19937 gen_;
     std::normal_distribution<> dist_;
     double noise_stddev_;
 
-    // ROS
+    // ROS用
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pub_;
     rclcpp::TimerBase::SharedPtr timer_;
 };

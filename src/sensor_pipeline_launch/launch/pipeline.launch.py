@@ -5,23 +5,26 @@ from launch.substitutions import LaunchConfiguration
 
 def generate_launch_description():
 
+    # Launch引数からEMAフィルタの時定数を取得
     tau = LaunchConfiguration('tau')
 
     return LaunchDescription([
 
-        # ===== 引数宣言 =====
+        # Launch引数の宣言
         DeclareLaunchArgument(
             'tau',
             default_value='0.5',
             description='Time constant for EMA filter'
         ),
 
+        # 疑似センサーデータを生成・配信するノード
         Node(
             package='sensor_pipeline_cpp',
             executable='sensor_node',
             name='sensor_node'
         ),
 
+        # 疑似センサーデータをEMAフィルタでフィルタリングするノード
         Node(
             package='sensor_pipeline_cpp',
             executable='filter_node',
@@ -31,6 +34,7 @@ def generate_launch_description():
             }]
         ),
 
+        # フィルタリング結果を可視化するノード
         Node(
             package='sensor_pipeline_py',
             executable='visualize_node',

@@ -27,13 +27,16 @@ public:
 
 private:
     void callback(const std_msgs::msg::Float64::SharedPtr msg) {
+        // 現在時刻を取得＆前回処理からの経過時間を算出
         auto now = this->now();
         double dt = (now - last_time_).seconds();
         last_time_ = now;
 
+         // 入力データを取得
         double raw = msg->data;
         double filtered;
 
+        // 初回はフィルタリングしない
         if (is_first_) {
             filtered = raw;
             prev_filtered_ = filtered;
@@ -41,12 +44,14 @@ private:
             return;
         }
 
-        // dtベースEMA
+        // dtベースEMAによるスムージング
         double alpha = dt / (tau_ + dt);
         filtered = alpha * raw + (1.0 - alpha) * prev_filtered_;
 
+        // 次回フィルタリングに使用する値を保存
         prev_filtered_ = filtered;
 
+        // フィルタリング結果をROSトピックへ送信
         std_msgs::msg::Float64 out_msg;
         out_msg.data = filtered;
         pub_->publish(out_msg);
@@ -57,12 +62,15 @@ private:
             dt, raw, filtered);
     }
 
+     // EMAフィルタ用
     double tau_;
     double prev_filtered_;
     bool is_first_;
 
+    // 時間計測用
     rclcpp::Time last_time_;
 
+    // ROS用
     rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr sub_;
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pub_;
 };
