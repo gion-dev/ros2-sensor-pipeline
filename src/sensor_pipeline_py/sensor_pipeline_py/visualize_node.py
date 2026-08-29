@@ -109,6 +109,7 @@ class VisualizeNode(Node):
             # フィルタリングによる誤差を描画
             plt.subplot(2, 1, 2)
             plt.plot(x, error, color="red",  alpha=0.7, label="error")
+            plt.ylim(-2.0, 2.0)
             plt.legend()
             plt.grid()
 

@@ -1,6 +1,6 @@
 # ROS2 Sensor Pipeline
 
-ROS2を用いて疑似センサーデータ生成・フィルタリング・可視化・評価までを行うパイプラインを構築しました。
+ROS2を用いて疑似センサーデータ生成・フィルタリング・グラフ生成までを行うパイプラインを構築しました。
 
 
 ## ■ 概要
@@ -36,11 +36,11 @@ ros2-sensor-pipeline/
 ```
 SensorNode (C++)
 ↓
-↓ 乱数ベースの疑似生データを通知
+↓ 乱数で生成した生データを通知
 ↓
 FilterNode (C++)
 ↓
-↓ EMAフィルタでフィルタリングしたデータを通知
+↓ EMAでフィルタリングしたデータを通知
 ↓
 VisualizeNode (Python)
 ↓
@@ -113,28 +113,24 @@ TAUS = [0.03, 0.05, 0.08, 0.1, 0.15, 0.2, 0.3]
 
 ### ■ 出力結果  
 - 時系列グラフ  
-- raw（センサ値）  
-- filtered（フィルタ後）  
-- error（raw - filtered）  # 誤差算出
+- raw（生センサデータ値）  
+- filtered（フィルター後のセンサーデータ値）  
+- error（raw - filtered = 誤差）  
 
-評価グラフ  
-```
-data/rmse_vs_tau.png  
-```
-👉 tauごとのRMSEを比較します
+### 最小tau（0.03の例）
+![small](data/result_tau_0.03.png)
+
+### 中間tau（0.1の例）
+![tau0.1](data/result_tau_0.1.png)
+
+### 最大tau（0.3の例）
+![large](data/result_tau_0.3.png)
 
 ### ■ 結果と考察  
 - 小さいtau  
 → 生のセンサーデータに近いまま通知する  
 - 大きいtau  
-→ より強いフィルターがかかる
-
-### 時系列グラフ（tau 0.1の例）
-![tau0.1](data/result_tau_0.1.png)
-
-### 比較例（tau 0.03と0.3の比較）
-![small](data/result_tau_0.03.png)
-![large](data/result_tau_0.3.png)
+→ より強いフィルターがかかる  
 
 ### ■ 工夫した点  
 - パラメータスイープの自動化（sweep_tau.py）  
